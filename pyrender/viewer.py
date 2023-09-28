@@ -566,7 +566,7 @@ class Viewer(pyglet.window.Window):
 
         if self.run_in_thread or not self._auto_start:
             self.render_lock.acquire()
-
+        self._time_event()
         # Make OpenGL context current
         self.switch_to()
 
@@ -856,8 +856,8 @@ class Viewer(pyglet.window.Window):
         if self._message_text is not None:
             self._message_opac = 1.0 + self._ticks_till_fade
 
-    @staticmethod
-    def _time_event(dt, self):
+    # @staticmethod
+    def _time_event(self):
         """The timer callback.
         """
         # Don't run old dead events after we've already closed
@@ -882,8 +882,8 @@ class Viewer(pyglet.window.Window):
 
         if self._should_close:
             self.on_close()
-        else:
-            self.on_draw()
+        # else:
+        #     self.on_draw()
 
     def _reset_view(self):
         """Reset the view to a good initial state.
@@ -1029,12 +1029,10 @@ class Viewer(pyglet.window.Window):
 
         if not self.context:
             raise ValueError('Unable to initialize an OpenGL 3+ context')
-        clock.schedule_interval(
-            Viewer._time_event, 1.0 / self.viewer_flags['refresh_rate'], self
-        )
+        
         self.switch_to()
         self.set_caption(self.viewer_flags['window_title'])
-        pyglet.app.run()
+        pyglet.app.run(1.0 / self.viewer_flags['refresh_rate'])
 
     def _compute_initial_camera_pose(self):
         centroid = self.scene.centroid
