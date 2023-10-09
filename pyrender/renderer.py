@@ -948,7 +948,9 @@ class Renderer(object):
             defines['WEIGHTS_0_LOC'] = buf_idx
             buf_idx += 1
         defines['INST_M_LOC'] = buf_idx
-
+        buf_idx += 4
+        defines['INST_C_LOC'] = buf_idx
+        
         # Set up shadow mapping defines
         if flags & RenderFlags.SHADOWS_DIRECTIONAL:
             defines['DIRECTIONAL_LIGHT_SHADOWS'] = 1

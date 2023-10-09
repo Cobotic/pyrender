@@ -67,7 +67,8 @@ class Primitive(object):
                  material=None,
                  mode=None,
                  targets=None,
-                 poses=None):
+                 poses=None,
+                 colors=None):
 
         if mode is None:
             mode = GLTF.TRIANGLES
@@ -85,6 +86,7 @@ class Primitive(object):
         self.mode = mode
         self.targets = targets
         self.poses = poses
+        self.colors = colors
 
         self._bounds = None
         self._vaid = None
@@ -410,7 +412,27 @@ class Primitive(object):
                 ctypes.c_void_p(4 * FLOAT_SZ * i)
             )
             glVertexAttribDivisor(idx, 1)
+        #######################################################################
+        # Fill color buffer
+        #######################################################################
+        color_data = np.ascontiguousarray(
+                self.colors.flatten().astype(np.float32)
+            )
+        modelbuffer = glGenBuffers(1)
+        self._buffers.append(modelbuffer)
+        glBindBuffer(GL_ARRAY_BUFFER, modelbuffer)
+        glBufferData(
+            GL_ARRAY_BUFFER, FLOAT_SZ * len(color_data),
+            color_data, GL_STATIC_DRAW
+        )
 
+        idx = idx + 1 
+        glEnableVertexAttribArray(idx)
+        glVertexAttribPointer(
+            idx, 4, GL_FLOAT, GL_FALSE, FLOAT_SZ * 4,
+            ctypes.c_void_p(4 * FLOAT_SZ * 0)
+        )
+        glVertexAttribDivisor(idx, 1)
         #######################################################################
         # Fill element buffer
         #######################################################################

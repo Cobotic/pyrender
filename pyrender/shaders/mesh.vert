@@ -24,6 +24,7 @@ layout(location = JOINTS_0_LOC) in vec4 joints_0;
 layout(location = WEIGHTS_0_LOC) in vec4 weights_0;
 #endif
 layout(location = INST_M_LOC) in mat4 inst_m;
+layout(location = INST_C_LOC) in vec4 inst_c;
 
 // Uniforms
 uniform mat4 M;
@@ -59,7 +60,7 @@ void main()
     frag_position = vec3(M * inst_m * vec4(position, 1.0));
 
     mat4 N = transpose(inverse(M * inst_m));
-
+    
 #ifdef NORMAL_LOC
     frag_normal = normalize(vec3(N * vec4(normal, 0.0)));
 #endif
@@ -81,6 +82,7 @@ void main()
     uv_1 = texcoord_1;
 #endif
 #ifdef COLOR_0_LOC
-    color_multiplier = color_0;
+    // color_multiplier = color_0;
+    color_multiplier = inst_c;
 #endif
 }
