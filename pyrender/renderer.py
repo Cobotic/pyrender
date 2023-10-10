@@ -601,9 +601,7 @@ class Renderer(object):
             glPointSize(self.point_size)
 
         # Render mesh
-        n_instances = 1
-        if primitive.poses is not None:
-            n_instances = len(primitive.poses)
+        n_instances = primitive._n_instances
 
         if primitive.indices is not None:
             glDrawElementsInstanced(
@@ -949,7 +947,8 @@ class Renderer(object):
             buf_idx += 1
         defines['INST_M_LOC'] = buf_idx
         buf_idx += 4
-        defines['INST_C_LOC'] = buf_idx
+        if bf & BufFlags.INST_C:
+            defines['INST_C_LOC'] = buf_idx
         
         # Set up shadow mapping defines
         if flags & RenderFlags.SHADOWS_DIRECTIONAL:

@@ -126,6 +126,7 @@ class BufFlags(object):
     COLOR_0 = 16
     JOINTS_0 = 32
     WEIGHTS_0 = 64
+    INST_C = 128
 
 
 class TexFlags(object):

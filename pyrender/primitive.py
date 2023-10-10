@@ -93,6 +93,8 @@ class Primitive(object):
         self._buffers = []
         self._is_transparent = None
         self._buf_flags = None
+        self._n_instances = 1 if self._poses is None else len(self._poses)
+        
 
     @property
     def positions(self):
@@ -275,6 +277,23 @@ class Primitive(object):
                                  'got {}'.format(value.shape))
         self._poses = value
         self._bounds = None
+    
+    @property
+    def colors(self):
+        """(x,4) float : color values for instancing this primitive. 
+        All faces are rendered with same color
+        """
+        return self._colors
+
+    @colors.setter
+    def colors(self, value):
+        if value is not None:
+            if value.shape[0] != self.poses.shape[0] or value.shape[1] != 4:
+                raise ValueError('Colors must be of shape (n,4), with equal n as in poses '
+                                 'got {}'.format(value.shape))
+            self._colors = value
+        else:
+            self._colors = None
 
     @property
     def bounds(self):
@@ -387,52 +406,112 @@ class Primitive(object):
         # Fill model matrix buffer
         #######################################################################
 
+        def create_instanced_mat4(poses):
+            pose_data = np.ascontiguousarray(
+                np.transpose(poses, [0,2,1]).flatten().astype(np.float32)
+            )
+            modelbuffer = glGenBuffers(1)
+            self._buffers.append(modelbuffer)
+            glBindBuffer(GL_ARRAY_BUFFER, modelbuffer)
+            
+            pose_data_len = len(pose_data)
+            
+            glBufferData(
+                GL_ARRAY_BUFFER, FLOAT_SZ * pose_data_len,
+                pose_data, GL_STATIC_DRAW
+            )
+
+            for i in range(0, 4):
+                idx = len(attr_sizes)
+                glEnableVertexAttribArray(idx)
+                glVertexAttribPointer(
+                    idx, 4, GL_FLOAT, GL_FALSE, FLOAT_SZ * 4 * 4,
+                    ctypes.c_void_p(4 * FLOAT_SZ * i)
+                )
+                glVertexAttribDivisor(idx, 1)
+                attr_sizes.append(4)
+            
+            
+            def set_data(data):
+                N = len(data)
+                assert N <=len(poses)
+                # poses[:N] = data
+
+                # poses[n:] = data[0]
+                glBindBuffer(GL_ARRAY_BUFFER, modelbuffer)
+                map_data = glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY)
+                arr = np.asarray((GLfloat*pose_data_len).from_address(map_data))
+                # arr = np.asarray((GLfloat*N).from_address(map_data))
+                arr = arr.reshape(-1,4,4)
+                arr = arr.transpose(0,2,1)
+                
+                # arr[:n] = data
+                arr[:N] = data
+                # arr[:N] = poses[:N]
+                glUnmapBuffer(GL_ARRAY_BUFFER)
+                self._n_instances = N
+            
+            def get_data():
+                glBindBuffer(GL_ARRAY_BUFFER, modelbuffer)
+                map_data = glMapBuffer(GL_ARRAY_BUFFER, GL_READ_ONLY)
+                arr = np.asarray((GLfloat*pose_data_len).from_address(map_data))
+                arr = arr.reshape(-1,4,4)
+                arr = arr.transpose(0,2,1)
+                
+                glUnmapBuffer(GL_ARRAY_BUFFER)
+                return arr
+                
+
+            return set_data, get_data
+        
+        # ninstances = self.poses.shape[0]
         if self.poses is not None:
-            pose_data = np.ascontiguousarray(
-                np.transpose(self.poses, [0,2,1]).flatten().astype(np.float32)
-            )
+            self.set_pose_data, self.get_pose_data = create_instanced_mat4(self.poses)
         else:
-            pose_data = np.ascontiguousarray(
-                np.eye(4).flatten().astype(np.float32)
-            )
-
-        modelbuffer = glGenBuffers(1)
-        self._buffers.append(modelbuffer)
-        glBindBuffer(GL_ARRAY_BUFFER, modelbuffer)
-        glBufferData(
-            GL_ARRAY_BUFFER, FLOAT_SZ * len(pose_data),
-            pose_data, GL_STATIC_DRAW
-        )
-
-        for i in range(0, 4):
-            idx = i + len(attr_sizes)
-            glEnableVertexAttribArray(idx)
-            glVertexAttribPointer(
-                idx, 4, GL_FLOAT, GL_FALSE, FLOAT_SZ * 4 * 4,
-                ctypes.c_void_p(4 * FLOAT_SZ * i)
-            )
-            glVertexAttribDivisor(idx, 1)
+            self.set_pose_data, self.get_pose_data = create_instanced_mat4(np.eye(4)[None,...])
         #######################################################################
         # Fill color buffer
         #######################################################################
-        color_data = np.ascontiguousarray(
-                self.colors.flatten().astype(np.float32)
+        def create_instanced_vec4(colors):
+            color_data = np.ascontiguousarray(
+                    colors.flatten().astype(np.float32)
+                )
+            modelbuffer = glGenBuffers(1)
+            self._buffers.append(modelbuffer)
+            glBindBuffer(GL_ARRAY_BUFFER, modelbuffer)
+            color_data_len = len(color_data)
+            glBufferData(
+                GL_ARRAY_BUFFER, FLOAT_SZ * color_data_len,
+                color_data, GL_STATIC_DRAW
             )
-        modelbuffer = glGenBuffers(1)
-        self._buffers.append(modelbuffer)
-        glBindBuffer(GL_ARRAY_BUFFER, modelbuffer)
-        glBufferData(
-            GL_ARRAY_BUFFER, FLOAT_SZ * len(color_data),
-            color_data, GL_STATIC_DRAW
-        )
 
-        idx = idx + 1 
-        glEnableVertexAttribArray(idx)
-        glVertexAttribPointer(
-            idx, 4, GL_FLOAT, GL_FALSE, FLOAT_SZ * 4,
-            ctypes.c_void_p(4 * FLOAT_SZ * 0)
-        )
-        glVertexAttribDivisor(idx, 1)
+            idx = len(attr_sizes)
+            glEnableVertexAttribArray(idx)
+            glVertexAttribPointer(
+                idx, 4, GL_FLOAT, GL_FALSE, FLOAT_SZ * 4,
+                ctypes.c_void_p(4 * FLOAT_SZ * 0)
+            )
+            glVertexAttribDivisor(idx, 1)
+            
+            def set_data(data):
+                colors[:] = data
+                glBindBuffer(GL_ARRAY_BUFFER, modelbuffer)
+                map_data = glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY)
+                arr = np.asarray((GLfloat*color_data_len).from_address(map_data))
+                arr = arr.reshape(-1,4)
+                arr[:] = colors
+                glUnmapBuffer(GL_ARRAY_BUFFER)
+            
+            def get_data():
+                glBindBuffer(GL_ARRAY_BUFFER, modelbuffer)
+                map_data = glMapBuffer(GL_ARRAY_BUFFER, GL_READ_ONLY)
+                arr = np.asarray((GLfloat*color_data_len).from_address(map_data))
+                arr = arr.reshape(-1,4)
+                glUnmapBuffer(GL_ARRAY_BUFFER)
+                return arr
+            return set_data, get_data
+        if self.colors is not None:
+            self.set_color_data, self.get_color_data = create_instanced_vec4(self.colors)
         #######################################################################
         # Fill element buffer
         #######################################################################
@@ -507,5 +586,7 @@ class Primitive(object):
             buf_flags |= BufFlags.JOINTS_0
         if self.weights_0 is not None:
             buf_flags |= BufFlags.WEIGHTS_0
+        if self.colors is not None:
+            buf_flags |= BufFlags.INST_C
 
         return buf_flags

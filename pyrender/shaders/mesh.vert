@@ -14,8 +14,12 @@ layout(location = TEXCOORD_0_LOC) in vec2 texcoord_0;
 #ifdef TEXCOORD_1_LOC
 layout(location = TEXCOORD_1_LOC) in vec2 texcoord_1;
 #endif
-#ifdef COLOR_0_LOC
-layout(location = COLOR_0_LOC) in vec4 color_0;
+#ifdef INST_C_LOC
+    layout(location = INST_C_LOC) in vec4 inst_c;
+#else
+    #ifdef COLOR_0_LOC
+        layout(location = COLOR_0_LOC) in vec4 color_0;
+    #endif
 #endif
 #ifdef JOINTS_0_LOC
 layout(location = JOINTS_0_LOC) in vec4 joints_0;
@@ -24,7 +28,7 @@ layout(location = JOINTS_0_LOC) in vec4 joints_0;
 layout(location = WEIGHTS_0_LOC) in vec4 weights_0;
 #endif
 layout(location = INST_M_LOC) in mat4 inst_m;
-layout(location = INST_C_LOC) in vec4 inst_c;
+
 
 // Uniforms
 uniform mat4 M;
@@ -49,8 +53,12 @@ out vec2 uv_0;
 #ifdef TEXCOORD_1_LOC
 out vec2 uv_1;
 #endif
-#ifdef COLOR_0_LOC
-out vec4 color_multiplier;
+#ifdef INST_C_LOC
+    out vec4 color_multiplier;
+#else
+    #ifdef COLOR_0_LOC
+        out vec4 color_multiplier;
+    #endif
 #endif
 
 
@@ -81,8 +89,11 @@ void main()
 #ifdef TEXCOORD_1_LOC
     uv_1 = texcoord_1;
 #endif
-#ifdef COLOR_0_LOC
-    // color_multiplier = color_0;
+#ifdef INST_C_LOC
     color_multiplier = inst_c;
+#else
+#ifdef COLOR_0_LOC
+    color_multiplier = color_0;
+#endif
 #endif
 }
