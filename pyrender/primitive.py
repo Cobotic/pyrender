@@ -494,12 +494,14 @@ class Primitive(object):
             glVertexAttribDivisor(idx, 1)
             
             def set_data(data):
-                colors[:] = data
+                N = len(data)
+                assert N <=len(colors)
+                # colors[:] = data
                 glBindBuffer(GL_ARRAY_BUFFER, modelbuffer)
                 map_data = glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY)
                 arr = np.asarray((GLfloat*color_data_len).from_address(map_data))
                 arr = arr.reshape(-1,4)
-                arr[:] = colors
+                arr[:N] = data
                 glUnmapBuffer(GL_ARRAY_BUFFER)
             
             def get_data():
